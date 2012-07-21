@@ -39,7 +39,7 @@ ControlBlock *ctrBlockSetup() {
   if (  _curBlock.r   != 0xfa ||
         _curBlock.g != 0xe2 ||
         _curBlock.b  != 0x11 ||
-        _curBlock.duration != 0xee ) return NULL;
+        ) return NULL;
   else {
     // read the next block which actually contains
     // control information

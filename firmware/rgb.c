@@ -8,22 +8,21 @@
  * red, green, blue are unsigned. This represents the red, green or blue
  * intensity.
  *
- * duration also unsigned and specified a time interval, define in
- * 1/2*MS_PER_TICK. Not all durations are valid. See below. Furthermore,
+ * duration also unsigned and specified a time interval, and has units of
+ * 2*MS_PER_TICK. Not all durations are valid. See below. Furthermore,
  * because colour delta per unit duration is stored as integers, we can not
- * satisfy all transitions requirements, namely those which require
- * intensity change per time slot of less than 1. e.g. going from 0 to 10
+ * satisfy all transition requirements, namely those which require
+ * intensity change per unit duration is less than 1. e.g. going from 0 to 10
  * over 200 unit duration. When this is encountered, the value is immediately
  * set to the average of the current intensity and the target intensity
  *
  * Each control block specifies the colour to transition to, and how
  * long that transition should take.
  *
- * The first control block is special. The first 3 bytes still specify
- * the colour intensity, but the 4th byte specifies special options instead of
- * duration.
+ * The first control block is special. The first 3 bytes must have values of:
  *
- * This optons are:
+ *   0xfa 0xe2 0x11
+ * The 4th byte specifies special options. These optons are:
  *
  *  - RGB_REVERSE
  *  - RGB_RANDOM_ON_READ
