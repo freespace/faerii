@@ -18,5 +18,5 @@ typedef struct {
     uint8 duration;
     uint8 options;
   };
-} ControlSequence;
+} ControlBlock;
 #endif

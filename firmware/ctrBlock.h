@@ -1,5 +1,5 @@
 #include "types.h"
 
-ControlSequence *ctrSeqSetup();
-ControlSequence *ctrSeqCurrent();
-ControlSequence *ctrSeqNext();
+ControlBlock *ctrBlockSetup();
+ControlBlock *ctrBlockCurrent();
+ControlBlock *ctrBlockNext();

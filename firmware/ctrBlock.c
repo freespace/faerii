@@ -1,17 +1,45 @@
 #include <avr/eeprom.h>
 
-#include "ctrseq.h"
+#include "ctrBlock.h"
 
 uint16 _eepromAddr;
-ControlSequence _curSeq;
+ControlBlock _curBlock;
 
-ControlSequence *ctrSeqSetup() {
-  eeprom_read_block(&_curSeq, (const void*)_eepromAddr, sizeof(_curSeq));
+void readCtrBlock() {
+  eeprom_read_block(&_curBlock, (const void*)_eepromAddr, sizeof(_curBlock));
+}
 
-  if (_curSeq.red != 0xde ||
-      _curSeq.green != 0xad ||
-      _curSeq.blue != 0xbe ||
-      _curSeq.duration != 0xef) PORTB |= _BV(PB3);
+void rewind() {
+  // rewinds to either the last delimiter block, or to 0
+  while (_eepromAddr>0) {
+    _eepromAddr -= sizeof(_curBlock);
+    readCtrBlock();
+    if (_curBlock.duration == 0xff) break;
+  }
+}
 
-  return &_curSeq;
+ControlBlock *ctrBlockCurrent() { return &_curBlock;}
+
+ControlBlock *ctrBlockSetup() {
+  readCtrBlock();
+
+  // $todo parse options here
+  return &_curBlock;
+}
+
+ControlBlock *ctrBlockNext() {
+  // $todo implement reversal here
+  _eepromAddr += sizeof(_curBlock);
+
+  if (_eepromAddr >= 512) rewind();
+
+  readCtrBlock();
+
+  if (_curBlock.duration == 0xff) {
+    rewind();
+    // need this b/c rewind set curBlock to a delimiter block
+    readCtrBlock();
+  }
+
+  return &_curBlock;
 }
