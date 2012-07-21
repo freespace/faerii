@@ -10,11 +10,11 @@
 DEVICE  = attiny85
 F_CPU   = 16500000	# in Hz
 FUSE_L  = 0xe1
-FUSE_H  = 0xdd
+FUSE_H  = 0xd5
 AVRDUDE = avrdude -c avrisp2 -P usb -p $(DEVICE) # edit this line for your programmer
 
 CFLAGS  = -Iusbdrv -I. -DDEBUG_LEVEL=0
-OBJECTS = usbdrv/usbdrv.o usbdrv/usbdrvasm.o usbdrv/oddebug.o main.o
+OBJECTS = usbdrv/usbdrv.o usbdrv/usbdrvasm.o usbdrv/oddebug.o main.o rgb.o ctrBlock.o
 
 COMPILE = avr-gcc -Wall -Os -DF_CPU=$(F_CPU) $(CFLAGS) -mmcu=$(DEVICE)
 
@@ -110,6 +110,7 @@ help:
 hex: main.hex
 
 program: flash fuse
+	avr-size main.hex
 
 # rule for programming fuse bits:
 fuse:
