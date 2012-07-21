@@ -9,7 +9,12 @@
  * intensity.
  *
  * duration also unsigned and specified a time interval, define in
- * 1/2*MS_PER_TICK. Not all durations are valid. See below.
+ * 1/2*MS_PER_TICK. Not all durations are valid. See below. Furthermore,
+ * because colour delta per unit duration is stored as integers, we can not
+ * satisfy all transitions requirements, namely those which require
+ * intensity change per time slot of less than 1. e.g. going from 0 to 10
+ * over 200 unit duration. When this is encountered, the value is immediately
+ * set to the average of the current intensity and the target intensity
  *
  * Each control block specifies the colour to transition to, and how
  * long that transition should take.
@@ -78,7 +83,7 @@
 // this makes parts of the code clearer
 #define MS_PER_SEC            (1000)
 
-#define MS_PER_UNIT_DURACTION (2*MS_PER_TICK)
+#define MS_PER_UNIT_DURATION  (2*MS_PER_TICK)
 
 volatile ElapsedTime _elapsedTime;
 
@@ -107,15 +112,51 @@ void pwm(phase, intensity, bitpos) {
   else PORTB &= ~_BV(bitpos);
 }
 
-// colour and dcolor, packed in rgb order
-uint8 _c[3], _dc[3];
+int16 calcColorDelta(uint8 from, uint8 to, uint8 duration) {
+  int16 d;
+  if (from > to) d = -(from - to)/duration;
+  else d = (to - from)/duration;
+
+  // the +/-1 is so we over shoot when we have very small
+  // delta steps. 1.2, 1.4 will truncate to 1, causing
+  // undershoot. Aesthetically, it seems better to overshoot.
+  // Large d is, smaller the effect this modification has.
+  if (d) {
+    if (d>0) d += 1;
+    else d -= 1;
+  }
+
+  return d;
+}
+
+uint8 adjIntensity(uint8 i, int16 di) {
+  int16 ii = i + di;
+  if (ii > UINT8_MAX) ii = UINT8_MAX;
+  else if (ii < 0) ii = 0;
+  return ii;
+}
+
+uint8 _r, _g, _b;
 uint8 _duration;
+uint8 _error;
+
+void copyColors(ControlBlock *cb) {
+  _r = cb->r;
+  _g = cb->g;
+  _b = cb->b;
+}
 
 void rgbSetup() {
   ControlBlock *cb = ctrBlockSetup();
-  _c[0] = cb->red;
-  _c[1] = cb->green;
-  _c[2] = cb->blue;
+  if (cb) {
+    _r = cb->r;
+    _g = cb->g;
+    _b = cb->b;
+    _duration = cb->duration;
+  } else {
+    PORTB |= _BV(PIN_R);
+    _error = 1;
+  }
 
   // Setup timer1 to use system block divded by 16384.
   // This gives us
@@ -135,19 +176,51 @@ void rgbSetup() {
 
   // setup the rgb pins
   DDRB = _BV(PIN_R) | _BV(PIN_G) | _BV(PIN_B);
+
+  if (_error == 0) PORTB = 0;
 }
 
-
+int16 _dr, _dg, _db;
 uint8 _pollCounter;
 uint16 _lastms;
 
 void rgbPoll() {
-  _pollCounter+=1;
-  pwm(_pollCounter, _c[0], PIN_R);
-  pwm(_pollCounter, _c[1], PIN_G);
-  pwm(_pollCounter, _c[2], PIN_B);
+  if (_error) return;
+
+  _pollCounter += 1;
+
+  if (msSince(_lastms) > MS_PER_UNIT_DURATION) {
+    _lastms = _elapsedTime.ms;
+    _duration -= 1;
+
+    _r = adjIntensity(_r, _dr);
+    _g = adjIntensity(_g, _dg);
+    _b = adjIntensity(_b, _db);
+
+  }
+
+  pwm(_pollCounter, _r, PIN_R);
+  pwm(_pollCounter, _g, PIN_G);
+  pwm(_pollCounter, _b, PIN_B);
 
   if (_duration == 0) {
-    ControlBlock *cb = ctrBlockNext();
+    // first set ourselves to the value the control block specified, since we
+    // probably didn't hit it due to founding errors.
+    ControlBlock *cb = ctrBlockCurrent();
+    copyColors(cb);
 
+    cb = ctrBlockNext();
+    _duration = cb->duration;
+
+    if (_duration) {
+      _dr = calcColorDelta(_r, cb->r, _duration);
+      _dg = calcColorDelta(_g, cb->g, _duration);
+      _db = calcColorDelta(_b, cb->b, _duration);
+
+      if (_dr == 0) _r = (cb->r+_r)/2;
+      if (_dg == 0) _g = (cb->g+_g)/2;
+      if (_db == 0) _b = (cb->b+_b)/2;
+
+    } else copyColors(cb);
+  }
 }

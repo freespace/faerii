@@ -24,6 +24,8 @@ at least be connected to INT0 as well.
 #include <avr/pgmspace.h>   /* required by usbdrv.h */
 #include "usbdrv.h"
 
+#include "rgb.h"
+
 /* ------------------------------------------------------------------------- */
 /* ----------------------------- USB interface ----------------------------- */
 /* ------------------------------------------------------------------------- */
@@ -85,12 +87,12 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
   usbRequest_t *rq = (void *)data;
 
   if((rq->bmRequestType & USBRQ_TYPE_MASK) == USBRQ_TYPE_CLASS) {  /* HID class request */
-    if(rq->bRequest == USBRQ_HID_GET_REPORT){  /* wValue: ReportType (highbyte), ReportID (lowbyte) */
+    if(rq->bRequest == USBRQ_HID_GET_REPORT) {  /* wValue: ReportType (highbyte), ReportID (lowbyte) */
       /* since we have only one report type, we can ignore the report-ID */
       bytesRemaining = 128;
       currentAddress = 0;
       return USB_NO_MSG;  /* use usbFunctionRead() to obtain data */
-    }else if(rq->bRequest == USBRQ_HID_SET_REPORT){
+    } else if(rq->bRequest == USBRQ_HID_SET_REPORT) {
       /* since we have only one report type, we can ignore the report-ID */
       bytesRemaining = 128;
       currentAddress = 0;
@@ -105,7 +107,7 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
 /* ------------------------------------------------------------------------- */
 
 int main(void) {
-  uchar   i = 0;
+  uchar   i;
 
   wdt_enable(WDTO_1S);
   /* Even if you don't use the watchdog, turn it off here. On newer devices,
@@ -118,16 +120,24 @@ int main(void) {
   usbInit();
   usbDeviceDisconnect();  /* enforce re-enumeration, do this while interrupts are disabled! */
 
-  while(--i) {       /* fake USB disconnect for > 250 ms */
+  for(i=0;--i;) {       /* fake USB disconnect for > 250 ms */
     wdt_reset();
     _delay_ms(1);
   }
+
+  // might as well take advantage of the fact
+  // and do some setup here
+  rgbSetup();
+
   usbDeviceConnect();
 
   sei();
+
   for(;;) {        /* main event loop */
+    usbPoll();
     wdt_reset();
     usbPoll();
+    rgbPoll();
   }
   return 0;
 }
