@@ -137,10 +137,17 @@ int         err;
             pos += hexread(buffer + pos, argv[i], sizeof(buffer) - pos);
         }
         hexdump(buffer, pos);
-        buffer[1] = WRITE_CMD;
-        if((err = usbhidSetReport(dev, buffer, pos)) != 0)   /* add a dummy report ID */
+        buffer[1] = CMD_WRITE;
+        if((err = usbhidSetReport(dev, buffer, pos)) != 0)
             fprintf(stderr, "error writing data: %s\n", usbErrorMessage(err));
         else printf("wrote out %u bytes, %u was user data\n", pos, pos-2);
+    } else if (strcasecmp(argv[1], "restart") == 0) {
+      buffer[0] = 0;
+      buffer[1] = CMD_RESTART;
+      int len = 2;
+      if((err = usbhidSetReport(dev, buffer, len)) != 0)
+          fprintf(stderr, "error writing data: %s\n", usbErrorMessage(err));
+      else printf("sent RESTART command\n");
     }else{
         usage(argv[0]);
         exit(1);
