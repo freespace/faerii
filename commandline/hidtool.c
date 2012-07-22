@@ -13,6 +13,7 @@
 #include <stdlib.h>
 #include "hiddata.h"
 #include "../firmware/usbconfig.h"  /* for device VID, PID, vendor name and product name */
+#include "../firmware/config.h"
 
 /* ------------------------------------------------------------------------- */
 
@@ -85,14 +86,15 @@ int     pos = 0;
 static void usage(char *myName)
 {
     fprintf(stderr, "usage:\n");
-    fprintf(stderr, "  %s read\n", myName);
-    fprintf(stderr, "  %s write <listofbytes>\n", myName);
+    fprintf(stderr, "  %s read <bytes to read>\n", myName);
+    fprintf(stderr, "  %s write <list of bytes separated by ,>\n", myName);
 }
 
 int main(int argc, char **argv)
 {
 usbDevice_t *dev;
-char        buffer[129];    /* room for dummy report ID */
+// for now, we are holding to the per-transfer data limit of 254 bytes
+char        buffer[254+1];    /* room for dummy report ID */
 int         err;
 
     if(argc < 2){
@@ -102,11 +104,24 @@ int         err;
     if((dev = openDevice()) == NULL)
         exit(1);
     if(strcasecmp(argv[1], "read") == 0){
-        int len = sizeof(buffer);
+        int len=254;
+        if (sscanf(argv[2], "%d", &len) != 1) {
+          fprintf(stderr, "error parsing numeric argument %s\n", argv[2]);
+          exit(1);
+        }
+
+        if (len>254) {
+          fprintf(stderr, "request number of bytes exceeds 254\n");
+          exit(1);
+        }
+
+        // remember we have to read in the dummy report ID
+        len +=1;
+
         if((err = usbhidGetReport(dev, 0, buffer, &len)) != 0){
             fprintf(stderr, "error reading data: %s\n", usbErrorMessage(err));
         }else{
-            hexdump(buffer + 1, sizeof(buffer) - 1);
+            hexdump(buffer + 1, len - 1);
         }
     }else if(strcasecmp(argv[1], "write") == 0){
         int i, pos;
@@ -114,8 +129,10 @@ int         err;
         for(pos = 1, i = 2; i < argc && pos < sizeof(buffer); i++){
             pos += hexread(buffer + pos, argv[i], sizeof(buffer) - pos);
         }
-        if((err = usbhidSetReport(dev, buffer, sizeof(buffer))) != 0)   /* add a dummy report ID */
+
+        if((err = usbhidSetReport(dev, buffer, pos)) != 0)   /* add a dummy report ID */
             fprintf(stderr, "error writing data: %s\n", usbErrorMessage(err));
+        else printf("wrote %u bytes of data\n", pos-1);
     }else{
         usage(argv[0]);
         exit(1);
