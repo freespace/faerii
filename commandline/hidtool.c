@@ -148,6 +148,21 @@ int         err;
       if((err = usbhidSetReport(dev, buffer, len)) != 0)
           fprintf(stderr, "error writing data: %s\n", usbErrorMessage(err));
       else printf("sent RESTART command\n");
+    } else if (strcasecmp(argv[1], "goto") == 0) {
+      buffer[0] = 0;
+      buffer[1] = CMD_GOTO;
+      int n;
+      if (sscanf(argv[2], "%d", &n) == 1) {
+        buffer[2] = n&0xff;
+        int len = 3;
+
+        if((err = usbhidSetReport(dev, buffer, len)) != 0)
+            fprintf(stderr, "error writing data: %s\n", usbErrorMessage(err));
+        else printf("sent GOTO command\n");
+      } else {
+        fprintf(stderr, "error parsing number argument: %s\n", argv[2]);
+        exit(1);
+      }
     }else{
         usage(argv[0]);
         exit(1);
