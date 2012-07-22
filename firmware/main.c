@@ -74,13 +74,13 @@ uchar usbFunctionRead(uchar *data, uchar len) {
  * device. For more information see the documentation in usbdrv/usbdrv.h.
  */
 uchar usbFunctionWrite(uchar *data, uchar len) {
-  if (command == NO_CMD) {
+  if (command == CMD_NONE) {
     command = data[0];
     data += 1;
     len -= 1;
   }
 
-  if (command == WRITE_CMD) {
+  if (command == CMD_WRITE) {
     if(bytesRemaining) {
       if(len > bytesRemaining)
         len = bytesRemaining;
@@ -91,16 +91,14 @@ uchar usbFunctionWrite(uchar *data, uchar len) {
     }
 
     return bytesRemaining == 0; /* return 1 if this was the last chunk */
-  } else if (command == GOTO_CMD) {
+  } else if (command == CMD_GOTO) {
     // there should one data byte
-    if (len == 1) return ctrBlockGoto(data[0]) == NULL;
-    else return 1;
-  } else if (command == RESTART_CMD) {
+    ctrBlockGoto(data[0]);
+    return 1;
+  } else if (command == CMD_RESTART) {
     // there should be no more data bytes
-    if (len == 0) {
-      rgbSetup();
-      return 0;
-    } else return 1;
+    rgbSetup();
+    return 1;
   } else return 1;
 }
 
@@ -125,7 +123,7 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
 
       // decrement bytesRemaining because command is eating up one byte
       bytesRemaining -= 1;
-      command = NO_CMD;
+      command = CMD_NONE;
       return USB_NO_MSG;  /* use usbFunctionWrite() to receive data from host */
     }
   } else {

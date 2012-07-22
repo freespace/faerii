@@ -89,11 +89,11 @@
 #define DD_REG               _DD_REG(PORTNAME)
 
 #ifndef COMMON_ANODE_LED
-#define ON_LED(bitpos)        (IO_PORT |= _BV(bitpos))
-#define OFF_LED(bitpos)       (IO_PORT &= ~_BV(bitpos))
+#define LED_ON(bitpos)        (IO_PORT |= _BV(bitpos))
+#define LED_OFF(bitpos)       (IO_PORT &= ~_BV(bitpos))
 #else
-#define ON_LED(bitpos)        (IO_PORT &= ~_BV(bitpos))
-#define OFF_LED(bitpos)       (IO_PORT |= _BV(bitpos))
+#define LED_ON(bitpos)        (IO_PORT &= ~_BV(bitpos))
+#define LED_OFF(bitpos)       (IO_PORT |= _BV(bitpos))
 #endif
 
 volatile ElapsedTime _elapsedTime;
@@ -120,8 +120,8 @@ uint16 msSince(uint16 thepast) {
 }
 
 void pwm(phase, intensity, bitpos) {
-  if (phase < intensity) ON_LED(bitpos);
-  else OFF_LED(bitpos);
+  if (phase < intensity) LED_ON(bitpos);
+  else LED_OFF(bitpos);
 }
 
 int16 calcColorDelta(uint8 from, uint8 to, uint8 duration) {
@@ -158,6 +158,7 @@ void copyColors(ControlBlock *cb) {
 }
 
 void rgbSetup() {
+  _error = 0;
   ControlBlock *cb = ctrBlockSetup();
   if (cb) {
     _r = cb->r;
@@ -194,7 +195,7 @@ uint16 _lastms;
 
 void rgbPoll() {
   if (_error) {
-    ON_LED(PIN_R);
+    LED_ON(PIN_R);
     return;
   }
 

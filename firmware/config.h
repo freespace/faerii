@@ -26,13 +26,13 @@
  * For now only READ, WRITE, RESTART, and GOTO is implemented.
  */
 
-///#define READ_CMD            (0)
-///#define READ2_CMD           (1)
-///#define READ3_CMD           (3)
-#define WRITE_CMD           (4)
-///#define WRITE2_CMD          (5)
-///#define WRITE3_CMD          (6)
-#define RESTART_CMD         (7)
-#define GOTO_CMD            (8)
-#define NO_CMD              (0xff)
+///#define CMD_READD            (0)
+///#define CMD_READ2           (1)
+///#define CMD_READ3           (3)
+#define CMD_WRITE           (4)
+///#define CMD_WRITE2          (5)
+///#define CMD_WRITE3          (6)
+#define CMD_RESTART         (7)
+#define CMD_GOTO            (8)
+#define CMD_NONE            (0xff)
 #endif
