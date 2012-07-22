@@ -36,6 +36,7 @@ void rewind() {
 ControlBlock *ctrBlockCurrent() { return &_curBlock;}
 
 ControlBlock *ctrBlockSetup() {
+  _eepromAddr = 0;
   readCtrBlock();
 
   // check to see if the EEPROM has been initalised
