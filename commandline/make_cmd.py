@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 """
 Reads a file that contains 4 bytes each line, written in hex and comma seaprated.
-Using this file, composes a hidtool command line to write this to the faerii
+Using this file, composes a hidtool command line to write this to the faerii.
+
+Comments can be added using #, blank lines are ignored.
 """
 
 HIDCMD="./hidtool write"
@@ -15,7 +17,9 @@ def main(args):
   with open(inputf) as f:
     for line in f.readlines():
       line = line.strip()
-      hexbytes += line.split(' ')
+      line = line.split('#',1)[0]
+      if len(line):
+        hexbytes += line.split(' ')
 
     try:
       # validate the data
