@@ -62,14 +62,12 @@
 #include <avr/eeprom.h>
 #include <avr/interrupt.h>
 
+#include "config.h"
 #include "types.h"
 #include "ctrBlock.h"
 
 #include "rgb.h"
 
-#define PIN_R                 PB0  // pin 5
-#define PIN_G                 PB3  // pin 2
-#define PIN_B                 PB4  // pin 3
 
 #define CYCLE_PER_TICK        (10)
 
@@ -84,11 +82,24 @@
 
 #define MS_PER_UNIT_DURATION  (2*MS_PER_TICK)
 
+#define _CONCAT(a,b)          (a ## b)
+#define _IO_PORT(name)        _CONCAT(PORT, name)
+#define IO_PORT               _IO_PORT(PORTNAME)
+#define _DD_REG(name)        _CONCAT(DDR,name)
+#define DD_REG               _DD_REG(PORTNAME)
+
+#ifndef COMMON_ANODE_LED
+#define ON_LED(bitpos)        (IO_PORT |= _BV(bitpos))
+#define OFF_LED(bitpos)       (IO_PORT &= ~_BV(bitpos))
+#else
+#define ON_LED(bitpos)        (IO_PORT &= ~_BV(bitpos))
+#define OFF_LED(bitpos)       (IO_PORT |= _BV(bitpos))
+#endif
+
 volatile ElapsedTime _elapsedTime;
 volatile uint8 _error;
 
 ISR(BADISR_vect) {
-  PORTB |= _BV(PIN_R);
   _error = 1;
 }
 
@@ -109,8 +120,8 @@ uint16 msSince(uint16 thepast) {
 }
 
 void pwm(phase, intensity, bitpos) {
-  if (phase < intensity) PORTB |= _BV(bitpos);
-  else PORTB &= ~_BV(bitpos);
+  if (phase < intensity) ON_LED(bitpos);
+  else OFF_LED(bitpos);
 }
 
 int16 calcColorDelta(uint8 from, uint8 to, uint8 duration) {
@@ -153,10 +164,7 @@ void rgbSetup() {
     _g = cb->g;
     _b = cb->b;
     _duration = cb->duration;
-  } else {
-    PORTB |= _BV(PIN_R);
-    _error = 1;
-  }
+  } else _error = 1;
 
   // Setup timer1 to use system block divded by 16384.
   // This gives us
@@ -175,9 +183,9 @@ void rgbSetup() {
   TIMSK = _BV(OCIE1B);
 
   // setup the rgb pins
-  DDRB = _BV(PIN_R) | _BV(PIN_G) | _BV(PIN_B);
+  DD_REG = _BV(PIN_R) | _BV(PIN_G) | _BV(PIN_B);
 
-  if (_error == 0) PORTB = 0;
+  if (_error == 0) IO_PORT = 0;
 }
 
 int16 _dr, _dg, _db;
@@ -185,7 +193,10 @@ uint8 _pollCounter;
 uint16 _lastms;
 
 void rgbPoll() {
-  if (_error) return;
+  if (_error) {
+    ON_LED(PIN_R);
+    return;
+  }
 
   _pollCounter += 1;
 
