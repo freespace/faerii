@@ -22,8 +22,10 @@ at least be connected to INT0 as well.
 #include <avr/eeprom.h>
 
 #include <avr/pgmspace.h>   /* required by usbdrv.h */
+
 #include "usbdrv.h"
 
+#include "types.h"
 #include "rgb.h"
 
 /* ------------------------------------------------------------------------- */
@@ -86,15 +88,18 @@ uchar usbFunctionWrite(uchar *data, uchar len) {
 usbMsgLen_t usbFunctionSetup(uchar data[8]) {
   usbRequest_t *rq = (void *)data;
 
+  // XXX as per documented in usbdrv.h, the maximum data we can
+  // transfer per exchange is 254 bytes. We thus truncate
+  // bytesRemaining if it is over this limit
   if((rq->bmRequestType & USBRQ_TYPE_MASK) == USBRQ_TYPE_CLASS) {  /* HID class request */
     if(rq->bRequest == USBRQ_HID_GET_REPORT) {  /* wValue: ReportType (highbyte), ReportID (lowbyte) */
-      /* since we have only one report type, we can ignore the report-ID */
-      bytesRemaining = 128;
+      bytesRemaining = rq->wLength.bytes[0];
+      if (bytesRemaining == 255) bytesRemaining = 254;
       currentAddress = 0;
       return USB_NO_MSG;  /* use usbFunctionRead() to obtain data */
     } else if(rq->bRequest == USBRQ_HID_SET_REPORT) {
-      /* since we have only one report type, we can ignore the report-ID */
-      bytesRemaining = 128;
+      bytesRemaining = rq->wLength.bytes[0];
+      if (bytesRemaining == 255) bytesRemaining = 254;
       currentAddress = 0;
       return USB_NO_MSG;  /* use usbFunctionWrite() to receive data from host */
     }
