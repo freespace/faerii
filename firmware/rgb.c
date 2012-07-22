@@ -85,9 +85,11 @@
 #define MS_PER_UNIT_DURATION  (2*MS_PER_TICK)
 
 volatile ElapsedTime _elapsedTime;
+volatile uint8 _error;
 
 ISR(BADISR_vect) {
-  PORTB |= _BV(PIN_G);
+  PORTB |= _BV(PIN_R);
+  _error = 1;
 }
 
 ISR(TIMER1_COMPB_vect) {
@@ -137,7 +139,6 @@ uint8 adjIntensity(uint8 i, int16 di) {
 
 uint8 _r, _g, _b;
 uint8 _duration;
-uint8 _error;
 
 void copyColors(ControlBlock *cb) {
   _r = cb->r;
