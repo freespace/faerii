@@ -70,6 +70,7 @@ uchar usbFunctionRead(uchar *data, uchar len) {
   return len;
 }
 
+#define END_COMMAND()     do {command=CMD_NONE;return 1;}while(0)
 /* usbFunctionWrite() is called when the host sends a chunk of data to the
  * device. For more information see the documentation in usbdrv/usbdrv.h.
  */
@@ -78,6 +79,10 @@ uchar usbFunctionWrite(uchar *data, uchar len) {
     command = data[0];
     data += 1;
     len -= 1;
+
+    // if we consumed a command byte, that is one less byte waiting to be
+    // read from the host
+    bytesRemaining -= 1;
   }
 
   if (command == CMD_WRITE) {
@@ -89,17 +94,17 @@ uchar usbFunctionWrite(uchar *data, uchar len) {
       currentAddress += len;
       bytesRemaining -= len;
     }
-
-    return bytesRemaining == 0; /* return 1 if this was the last chunk */
+    if (bytesRemaining == 0) END_COMMAND();
+    else return 0;
   } else if (command == CMD_GOTO) {
     // there should one data byte
     ctrBlockGoto(data[0]);
-    return 1;
+    END_COMMAND();
   } else if (command == CMD_RESTART) {
     // there should be no more data bytes
     rgbSetup();
-    return 1;
-  } else return 1;
+    END_COMMAND();
+  } else END_COMMAND();
 }
 
 /* ------------------------------------------------------------------------- */
@@ -120,10 +125,6 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
       bytesRemaining = rq->wLength.bytes[0];
       if (bytesRemaining == 255) bytesRemaining = 254;
       currentAddress = 0;
-
-      // decrement bytesRemaining because command is eating up one byte
-      bytesRemaining -= 1;
-      command = CMD_NONE;
       return USB_NO_MSG;  /* use usbFunctionWrite() to receive data from host */
     }
   } else {
@@ -136,6 +137,8 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
 
 int main(void) {
   uchar   i;
+
+  command = CMD_NONE;
 
   wdt_enable(WDTO_1S);
   /* Even if you don't use the watchdog, turn it off here. On newer devices,
