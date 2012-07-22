@@ -25,7 +25,9 @@ at least be connected to INT0 as well.
 
 #include "usbdrv.h"
 
+#include "config.h"
 #include "types.h"
+#include "ctrBlock.h"
 #include "rgb.h"
 
 /* ------------------------------------------------------------------------- */
@@ -52,7 +54,7 @@ PROGMEM char const usbHidReportDescriptor[22] = {    /* USB report descriptor */
 /* The following variables store the status of the current data transfer */
 static uchar  currentAddress;
 static uchar  bytesRemaining;
-
+static uchar  command;
 /* ------------------------------------------------------------------------- */
 
 /* usbFunctionRead() is called when the host requests a chunk of data from
@@ -72,15 +74,34 @@ uchar usbFunctionRead(uchar *data, uchar len) {
  * device. For more information see the documentation in usbdrv/usbdrv.h.
  */
 uchar usbFunctionWrite(uchar *data, uchar len) {
-  if(bytesRemaining == 0) return 1;
+  if (command == NO_CMD) {
+    command = data[0];
+    data += 1;
+    len -= 1;
+  }
 
-  if(len > bytesRemaining)
-    len = bytesRemaining;
+  if (command == WRITE_CMD) {
+    if(bytesRemaining) {
+      if(len > bytesRemaining)
+        len = bytesRemaining;
 
-  eeprom_write_block(data, (uchar *)0 + currentAddress, len);
-  currentAddress += len;
-  bytesRemaining -= len;
-  return bytesRemaining == 0; /* return 1 if this was the last chunk */
+      eeprom_write_block(data, (uchar *)0 + currentAddress, len);
+      currentAddress += len;
+      bytesRemaining -= len;
+    }
+
+    return bytesRemaining == 0; /* return 1 if this was the last chunk */
+  } else if (command == GOTO_CMD) {
+    // there should one data byte
+    if (len == 1) return ctrBlockGoto(data[0]) == NULL;
+    else return 1;
+  } else if (command == RESTART_CMD) {
+    // there should be no more data bytes
+    if (len == 0) {
+      rgbSetup();
+      return 0;
+    } else return 1;
+  } else return 1;
 }
 
 /* ------------------------------------------------------------------------- */
@@ -101,6 +122,10 @@ usbMsgLen_t usbFunctionSetup(uchar data[8]) {
       bytesRemaining = rq->wLength.bytes[0];
       if (bytesRemaining == 255) bytesRemaining = 254;
       currentAddress = 0;
+
+      // decrement bytesRemaining because command is eating up one byte
+      bytesRemaining -= 1;
+      command = NO_CMD;
       return USB_NO_MSG;  /* use usbFunctionWrite() to receive data from host */
     }
   } else {

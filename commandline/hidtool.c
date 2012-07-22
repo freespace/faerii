@@ -57,7 +57,7 @@ FILE    *fp = stdout;
 
     for(i = 0; i < len; i++){
         if(i != 0){
-            if(i % 16 == 0){
+            if(i % 4 == 0){
                 fprintf(fp, "\n");
             }else{
                 fprintf(fp, " ");
@@ -88,6 +88,8 @@ static void usage(char *myName)
     fprintf(stderr, "usage:\n");
     fprintf(stderr, "  %s read <bytes to read>\n", myName);
     fprintf(stderr, "  %s write <list of bytes separated by ,>\n", myName);
+    fprintf(stderr, "  %s goto <block # as uint8> \n", myName);
+    fprintf(stderr, "  %s restart\n", myName);
 }
 
 int main(int argc, char **argv)
@@ -104,6 +106,11 @@ int         err;
     if((dev = openDevice()) == NULL)
         exit(1);
     if(strcasecmp(argv[1], "read") == 0){
+        if (argc < 3) {
+          usage(argv[0]);
+          exit(1);
+        }
+
         int len=254;
         if (sscanf(argv[2], "%d", &len) != 1) {
           fprintf(stderr, "error parsing numeric argument %s\n", argv[2]);
@@ -126,13 +133,14 @@ int         err;
     }else if(strcasecmp(argv[1], "write") == 0){
         int i, pos;
         memset(buffer, 0, sizeof(buffer));
-        for(pos = 1, i = 2; i < argc && pos < sizeof(buffer); i++){
+        for(pos = 2, i = 2; i < argc && pos < sizeof(buffer); i++){
             pos += hexread(buffer + pos, argv[i], sizeof(buffer) - pos);
         }
-
+        hexdump(buffer, pos);
+        buffer[1] = WRITE_CMD;
         if((err = usbhidSetReport(dev, buffer, pos)) != 0)   /* add a dummy report ID */
             fprintf(stderr, "error writing data: %s\n", usbErrorMessage(err));
-        else printf("wrote %u bytes of data\n", pos-1);
+        else printf("wrote out %u bytes, %u was user data\n", pos, pos-2);
     }else{
         usage(argv[0]);
         exit(1);
