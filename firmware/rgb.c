@@ -68,12 +68,10 @@
 
 #include "rgb.h"
 
-
+// our internal time keeping ticks over once every MS_PER_TICK. Note that
+// CYCLE_PER_TICK is equal to MS_PER_TICK _only_ for a timer running close
+// to 1KHz.
 #define CYCLE_PER_TICK        (10)
-
-// our internal time keeping ticks over
-// once every MS_PER_TICK. Note that
-// a value of 1 is unreliable
 #define MS_PER_TICK           (10)
 
 // it is unlikely this will change, but
