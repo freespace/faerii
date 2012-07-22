@@ -58,10 +58,10 @@ ControlBlock *ctrBlockNext() {
   INC_EEPROM_ADDR();
 
   if (_eepromAddr > EEPROM_SIZE-BLOCK_SIZE) rewind();
-
-  readCtrBlock();
-
-  if (_curBlock.duration == 0xff) rewind();
+  else {
+    readCtrBlock();
+    if (_curBlock.duration == 0xff) rewind();
+  }
 
   return &_curBlock;
 }
